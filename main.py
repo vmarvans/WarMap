@@ -13,7 +13,14 @@ class HostScanner:
                                    timeout=self.timeout,)
         return arp_request
     
+    def icmp_ping(self):
+
+        icmp_request = scapy.sr(scapy.IP(dst=self.ip_range)/scapy.ICMP(),
+                                 iface=self.network_interface,
+                                 timeout=self.timeout)
+        return icmp_request[0].summary() if icmp_request else "No response"
+    
 if __name__ == "__main__":
     scanner = HostScanner("192.168.1.0/24", "Ethernet", 2)
-    result = scanner.arp_ping()
-    print(result)
+    icmp_result = scanner.icmp_ping()
+    print(f"ICMP Ping Result: {icmp_result}")
