@@ -1,8 +1,7 @@
-
-import scanner as scanner
-
+import scanner 
 
 if __name__ == "__main__":
-    dhcp_scanner = scanner.DHCPScanner("Ethernet")  # Buraya kendi arayüz adını yaz (örnek: "eth0", "wlan0")
-    dhcp_scanner.send_discover()
-    dhcp_scanner.listen_response()
+
+    host_scanner = scanner.HostScanner("192.168.1.0/24", "Ethernet", 3)  # Buraya kendi IP aralığını ve arayüz adını yaz
+
+    print(host_scanner.send_icmp_ping())  # ICMP ping gönder
