@@ -1,16 +1,28 @@
 from scapy.all import *
-
+from netaddr import IPNetwork
+import asyncio
+conf.verb = 0
 
 class HostScanner:
-    
+    #
+    # ----------------- To Do List -----------------
+    # - On TCP SYN Ping, add more ports to scan
+    #
+
     """A class to perform various types of network scans.
     This class uses Scapy to perform ARP, ICMP, TCP, and UDP scans on a specified IP range.
     """
+    #
+    # ----------------- Initialization -----------------
+    #
 
     def __init__(self, ip_range, timeout):
         self.ip_range = ip_range
         self.timeout = timeout
     
+    #
+    # ----------------- ICMP Ping -----------------
+    #
     def send_icmp_ping(self):
 
         try: 
@@ -22,6 +34,9 @@ class HostScanner:
         except Exception as e:
             print(f"An error occurred while sending ICMP ping: {e}")
 
+    #
+    # ----------------- ARP Ping ----------------- 
+    #
     def send_arp_ping(self):
 
         """Sends ARP ping requests to the specified IP range."""
@@ -32,4 +47,46 @@ class HostScanner:
         except Exception as e:
             print(f"An error occurred while sending ARP ping: {e}")
 
+    
+    #
+    # ----------------- TCP SYN Ping ----------------- 
+    # Note: Need to update for scanning more ports
+    async def send_tcp_syn_ping(self,ip, port):
+      
+      """Sends a TCP SYN ping to the specified IP and port."""
+      packet = IP(dst=ip)/TCP(dport=port, flags="S")
+      response = await asyncio.to_thread(sr1,packet, timeout=self.timeout)
 
+      if response and response.haslayer(TCP):
+          if response[TCP].flags == 0x12:
+                return f"Port {port} is open on {self.ip_range}"
+          return None
+      
+    async def run_tcp_syn_ping(self):
+
+        """Runs the TCP SYN ping asynchronously for all IPs in the range."""
+        tasks = []
+        for ip in IPNetwork(self.ip_range):
+            tasks.append(self.send_tcp_syn_ping(str(ip), 80))
+        
+        results = await asyncio.gather(*tasks)
+        return [result for result in results if result is not None]
+
+    #
+    # ----------------- UDP Ping -----------------
+    # Note: Need to update for scanning more ports
+    async def send_udp_ping(self, ip, port):
+        """Sends a UDP ping to the specified IP and port."""
+        packet = IP(dst=ip)/UDP(dport=port)
+        response = await asyncio.to_thread(sr1, packet, timeout=self.timeout)
+
+        if response and response.haslayer(UDP):
+            return f"Port {port} is open on {self.ip_range}"
+        return None
+    async def run_udp_ping(self):
+        """Runs the UDP ping asynchronously for all IPs in the range."""
+        tasks = []
+        for ip in IPNetwork(self.ip_range):
+            tasks.append(self.send_udp_ping(str(ip), 53))
+        results = await asyncio.gather(*tasks)
+        return [result for result in results if result is not None]

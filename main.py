@@ -1,7 +1,10 @@
 import scanner 
+import asyncio
 
 if __name__ == "__main__":
 
-    host_scanner = scanner.HostScanner("192.168.1.0/24", "Ethernet", 3)  # Buraya kendi IP aralığını ve arayüz adını yaz
+    host_scanner = scanner.HostScanner("192.168.1.0/24", 3)  # Buraya kendi IP aralığını ve arayüz adını yaz
 
-    print(host_scanner.send_icmp_ping())  # ICMP ping gönder
+    tcp_results = asyncio.run(host_scanner.run_udp_ping())
+    for result in tcp_results:
+        print(result)
