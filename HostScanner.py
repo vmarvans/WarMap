@@ -1,9 +1,8 @@
 from scapy.all import *
 from netaddr import IPNetwork
 import asyncio
-conf.verb = 0
 
-class HostScanner:
+class Scanner:
     #
     # ----------------- To Do List -----------------
     # - On TCP SYN Ping, add more ports to scan
@@ -53,15 +52,30 @@ class HostScanner:
     #
     # ----------------- ARP Ping ----------------- 
     #
-    def send_arp_ping(self):
-
-        """Sends ARP ping requests to the specified IP range."""
+    async def send_arp_ping(self, ip):
+        """Sends an ARP ping to the specified IP asynchronously."""
         try:
-           ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=self.ip_range), timeout=self.timeout)
-           response = ans.summary(lambda s,r: r.sprintf("%Ether.src% %ARP.psrc%") )
-           return response
+            packet = Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=ip)
+            response, _ = await asyncio.to_thread(srp, packet, timeout=self.timeout, verbose=0)
+            if response:
+                summary = response.summary(lambda s, r: r.sprintf("%Ether.src% %ARP.psrc%"))
+                if summary:  # Only return non-empty summaries
+                    return summary
+            return None
         except Exception as e:
-            print(f"An error occurred while sending ARP ping: {e}")
+            return None  # Silently ignore errors to avoid clutter
+
+    async def run_arp_ping(self):
+        """Runs the ARP ping asynchronously for all IPs in the range."""
+        try:
+            tasks = []
+            for ip in IPNetwork(self.ip_range):
+                tasks.append(self.send_arp_ping(str(ip)))
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            return [result for result in results if result is not None]
+        except Exception as e:
+            return []
 
     
     #
