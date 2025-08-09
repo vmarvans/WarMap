@@ -23,16 +23,32 @@ class HostScanner:
     #
     # ----------------- ICMP Ping -----------------
     #
-    def send_icmp_ping(self):
-
-        try: 
-            """Sends ICMP ping requests to the specified IP range."""
-            ans, unans = sr(IP(dst=self.ip_range)/ICMP(), timeout=self.timeout)
-            response = ans.summary(lambda s,r: r.sprintf("%IP.src% is alive") )
-            return response
-
+    
+    async def send_icmp_ping(self, ip):
+        """Sends an ICMP ping to the specified IP asynchronously."""
+        try:
+            packet = IP(dst=ip)/ICMP()
+            response, _ = await asyncio.to_thread(sr, packet, timeout=self.timeout, verbose=0)
+            if response:
+                summary = response.summary(lambda s, r: r.sprintf("%IP.src% is alive"))
+                if summary:  # Only return non-empty summaries
+                    return summary
+            return None
         except Exception as e:
-            print(f"An error occurred while sending ICMP ping: {e}")
+            return None  # Silently ignore errors to avoid clutter
+
+    async def run_icmp_ping(self):
+        """Runs the ICMP ping asynchronously for all IPs in the range."""
+        try:
+            tasks = []
+            for ip in IPNetwork(self.ip_range):
+                tasks.append(self.send_icmp_ping(str(ip)))
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            return [result for result in results if result is not None]
+        except Exception as e:
+            return []
+
 
     #
     # ----------------- ARP Ping ----------------- 
